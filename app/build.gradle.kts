@@ -63,6 +63,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
     
+    // Splash Screen
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    
     // Protocol Buffers for GTFS-RT (javalite for Android)
     implementation("com.google.protobuf:protobuf-javalite:3.24.4")
     

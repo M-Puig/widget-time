@@ -23,8 +23,7 @@
         <ImageView
             android:layout_width="120dp"
             android:layout_height="120dp"
-            android:src="@drawable/ic_tram"
-            android:tint="?attr/colorPrimary"
+            android:src="@drawable/splash_icon"
             android:contentDescription="@string/app_name" />
 
         <TextView

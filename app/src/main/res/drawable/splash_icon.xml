@@ -5,17 +5,27 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Tram icon centered in safe zone (66x66 in center) -->
+    <!-- Background circle -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M54,54 m-50,0 a50,50 0 1,1 100,0 a50,50 0 1,1 -100,0" />
+    
+    <!-- Ground at bottom of circle -->
+    <path
+        android:fillColor="#66BB6A"
+        android:pathData="M54,104 m-50,0 a50,50 0 0,1 0,-20 l100,0 a50,50 0 0,1 0,20 z" />
+    
+    <!-- Tram icon -->
     <group
         android:translateX="24"
         android:translateY="18">
         
-        <!-- Tram body (shorter) -->
+        <!-- Tram body -->
         <path
             android:fillColor="#FFFFFF"
             android:pathData="M15,52 L15,28 C15,24 20,22 30,22 C40,22 45,24 45,28 L45,52 C45,55 43,57 40,57 L20,57 C17,57 15,55 15,52 Z" />
         
-        <!-- Tram windows (single row) -->
+        <!-- Tram windows -->
         <path
             android:fillColor="#1565C0"
             android:pathData="M17,28 L28,28 L28,40 L17,40 Z" />
@@ -44,12 +54,12 @@
             android:fillColor="#424242"
             android:pathData="M37,55 L40,55 L40,65 L37,65 Z" />
         
-        <!-- Track/rail -->
+        <!-- Track -->
         <path
             android:fillColor="#757575"
             android:pathData="M8,63 L52,63 L52,65 L8,65 Z" />
         
-        <!-- Pantograph/power connector -->
+        <!-- Pantograph -->
         <path
             android:strokeColor="#757575"
             android:strokeWidth="2"

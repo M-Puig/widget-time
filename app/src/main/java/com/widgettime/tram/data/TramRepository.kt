@@ -9,8 +9,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.widgettime.tram.data.models.LineDirection
 import com.widgettime.tram.data.models.Station
+import com.widgettime.tram.data.models.StopConfig
 import com.widgettime.tram.data.models.TramArrival
+import com.widgettime.tram.data.models.WidgetConfig
 import com.widgettime.tram.data.models.WidgetFilter
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -460,6 +464,8 @@ class TramRepository private constructor(private val context: Context) {
     private fun widgetStationKey(widgetId: Int) = stringPreferencesKey("widget_$widgetId")
     private fun widgetLineKey(widgetId: Int) = stringPreferencesKey("widget_${widgetId}_line")
     private fun widgetDirectionKey(widgetId: Int) = stringPreferencesKey("widget_${widgetId}_direction")
+    private fun widgetConfigKey(widgetId: Int) = stringPreferencesKey("widget_${widgetId}_config")
+    private fun widgetCurrentIndexKey(widgetId: Int) = stringPreferencesKey("widget_${widgetId}_current_index")
 
     /**
      * Save the filter (line + direction) for a widget.
@@ -489,6 +495,139 @@ class TramRepository private constructor(private val context: Context) {
                 direction = preferences[widgetDirectionKey(widgetId)]
             )
         }.first()
+    }
+
+    // ==================== Multi-stop configuration ====================
+
+    /**
+     * Save the widget configuration with multiple stops.
+     */
+    suspend fun saveWidgetConfig(widgetId: Int, config: WidgetConfig) {
+        val json = serializeWidgetConfig(config)
+        context.dataStore.edit { preferences ->
+            preferences[widgetConfigKey(widgetId)] = json
+        }
+    }
+
+    /**
+     * Get the widget configuration with multiple stops.
+     * Falls back to legacy single-stop config if no multi-stop config exists.
+     */
+    suspend fun getWidgetConfig(widgetId: Int): WidgetConfig {
+        return context.dataStore.data.map { preferences ->
+            val json = preferences[widgetConfigKey(widgetId)]
+            if (json != null) {
+                deserializeWidgetConfig(json)
+            } else {
+                // Legacy fallback: convert old single-station config to new format
+                val stationId = preferences[widgetStationKey(widgetId)]
+                if (stationId != null) {
+                    val filter = WidgetFilter(
+                        line = preferences[widgetLineKey(widgetId)],
+                        direction = preferences[widgetDirectionKey(widgetId)]
+                    )
+                    val stationName = getStationName(stationId)
+                    WidgetConfig(
+                        stops = listOf(StopConfig(stationId, stationName, filter)),
+                        currentIndex = 0
+                    )
+                } else {
+                    WidgetConfig()
+                }
+            }
+        }.first()
+    }
+
+    /**
+     * Add a stop to the widget configuration.
+     */
+    suspend fun addStopToWidget(widgetId: Int, stop: StopConfig) {
+        val config = getWidgetConfig(widgetId)
+        val newConfig = config.copy(stops = config.stops + stop)
+        saveWidgetConfig(widgetId, newConfig)
+    }
+
+    /**
+     * Update the current index (for navigation).
+     */
+    suspend fun setWidgetCurrentIndex(widgetId: Int, index: Int) {
+        val config = getWidgetConfig(widgetId)
+        val newConfig = config.copy(currentIndex = index.coerceIn(0, maxOf(0, config.stops.size - 1)))
+        saveWidgetConfig(widgetId, newConfig)
+    }
+
+    /**
+     * Navigate to next stop.
+     */
+    suspend fun nextStop(widgetId: Int): WidgetConfig {
+        val config = getWidgetConfig(widgetId)
+        val newConfig = config.copy(currentIndex = config.nextIndex())
+        saveWidgetConfig(widgetId, newConfig)
+        return newConfig
+    }
+
+    /**
+     * Navigate to previous stop.
+     */
+    suspend fun prevStop(widgetId: Int): WidgetConfig {
+        val config = getWidgetConfig(widgetId)
+        val newConfig = config.copy(currentIndex = config.prevIndex())
+        saveWidgetConfig(widgetId, newConfig)
+        return newConfig
+    }
+
+    /**
+     * Remove a widget configuration entirely.
+     */
+    suspend fun removeWidgetConfig(widgetId: Int) {
+        context.dataStore.edit { preferences ->
+            preferences.remove(widgetConfigKey(widgetId))
+            // Also clean up legacy keys
+            preferences.remove(widgetStationKey(widgetId))
+            preferences.remove(widgetLineKey(widgetId))
+            preferences.remove(widgetDirectionKey(widgetId))
+        }
+    }
+
+    private fun serializeWidgetConfig(config: WidgetConfig): String {
+        val json = JSONObject()
+        json.put("currentIndex", config.currentIndex)
+        val stopsArray = JSONArray()
+        for (stop in config.stops) {
+            val stopJson = JSONObject()
+            stopJson.put("stationId", stop.stationId)
+            stopJson.put("stationName", stop.stationName)
+            stopJson.put("filterLine", stop.filter.line)
+            stopJson.put("filterDirection", stop.filter.direction)
+            stopsArray.put(stopJson)
+        }
+        json.put("stops", stopsArray)
+        return json.toString()
+    }
+
+    private fun deserializeWidgetConfig(jsonStr: String): WidgetConfig {
+        return try {
+            val json = JSONObject(jsonStr)
+            val currentIndex = json.optInt("currentIndex", 0)
+            val stopsArray = json.optJSONArray("stops") ?: JSONArray()
+            val stops = mutableListOf<StopConfig>()
+            for (i in 0 until stopsArray.length()) {
+                val stopJson = stopsArray.getJSONObject(i)
+                val filter = WidgetFilter(
+                    line = stopJson.optString("filterLine", null).takeIf { it.isNotEmpty() },
+                    direction = stopJson.optString("filterDirection", null).takeIf { it.isNotEmpty() }
+                )
+                stops.add(StopConfig(
+                    stationId = stopJson.getString("stationId"),
+                    stationName = stopJson.getString("stationName"),
+                    filter = filter
+                ))
+            }
+            WidgetConfig(stops = stops, currentIndex = currentIndex)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error deserializing widget config: ${e.message}")
+            WidgetConfig()
+        }
     }
 
     /**

@@ -13,15 +13,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.widgettime.tram.data.TramRepository
 import com.widgettime.tram.data.models.LineDirection
 import com.widgettime.tram.data.models.Station
+import com.widgettime.tram.data.models.StopConfig
+import com.widgettime.tram.data.models.WidgetConfig
 import com.widgettime.tram.data.models.WidgetFilter
 import com.widgettime.tram.databinding.ActivityConfigBinding
 import kotlinx.coroutines.launch
 
 /**
  * Configuration activity that appears when adding a new widget to the home screen.
- * Two-step flow:
+ * Multi-step flow:
  * 1. Select a station
  * 2. Optionally select a line/direction filter
+ * 3. Optionally add more stops (repeat 1-2)
+ * 4. Done - finish configuration
  */
 class TramWidgetConfigActivity : AppCompatActivity() {
 
@@ -33,6 +37,9 @@ class TramWidgetConfigActivity : AppCompatActivity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
     private var selectedStation: Station? = null
     private var allStations: List<Station> = emptyList()
+    
+    // Multi-stop support
+    private var configuredStops: MutableList<StopConfig> = mutableListOf()
     
     private enum class Step { SELECT_STATION, SELECT_LINE_DIRECTION }
     private var currentStep = Step.SELECT_STATION
@@ -64,7 +71,15 @@ class TramWidgetConfigActivity : AppCompatActivity() {
         setupToolbar()
         setupRecyclerViews()
         setupSearch()
-        showStationSelection()
+        
+        // Load existing configuration if editing an existing widget
+        lifecycleScope.launch {
+            val existingConfig = repository.getWidgetConfig(appWidgetId)
+            if (existingConfig.stops.isNotEmpty()) {
+                configuredStops.addAll(existingConfig.stops)
+            }
+            showStationSelection()
+        }
     }
     
     private fun setupToolbar() {
@@ -118,14 +133,39 @@ class TramWidgetConfigActivity : AppCompatActivity() {
     
     private fun showStationSelection() {
         currentStep = Step.SELECT_STATION
-        binding.toolbar.navigationIcon = null
+        
+        // Show back button if we have existing stops (to allow finishing)
+        if (configuredStops.isNotEmpty()) {
+            binding.toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
+        } else {
+            binding.toolbar.navigationIcon = null
+        }
+        
         binding.stepTitle.text = getString(R.string.select_station)
-        binding.stepSubtitle.visibility = View.GONE
+        
+        // Show count of configured stops
+        if (configuredStops.isNotEmpty()) {
+            binding.stepSubtitle.text = getString(R.string.stops_configured, configuredStops.size)
+            binding.stepSubtitle.visibility = View.VISIBLE
+        } else {
+            binding.stepSubtitle.visibility = View.GONE
+        }
+        
         binding.searchInputLayout.visibility = View.VISIBLE
         binding.searchEditText.text?.clear()
         binding.recyclerViewStations.visibility = View.VISIBLE
         binding.recyclerViewLineDirections.visibility = View.GONE
-        binding.skipFilterButton.visibility = View.GONE
+        
+        // Show "Done" button if we have at least one stop configured
+        if (configuredStops.isNotEmpty()) {
+            binding.skipFilterButton.visibility = View.VISIBLE
+            binding.skipFilterButton.text = getString(R.string.done)
+            binding.skipFilterButton.setOnClickListener {
+                finishConfiguration()
+            }
+        } else {
+            binding.skipFilterButton.visibility = View.GONE
+        }
         
         loadStations()
     }
@@ -196,8 +236,9 @@ class TramWidgetConfigActivity : AppCompatActivity() {
                     
                     // Show "Show all lines" button
                     binding.skipFilterButton.visibility = View.VISIBLE
+                    binding.skipFilterButton.text = getString(R.string.show_all_lines)
                     binding.skipFilterButton.setOnClickListener {
-                        finishConfiguration(WidgetFilter.NONE)
+                        addStopAndContinue(WidgetFilter.NONE)
                     }
                 } else {
                     // No lines found - might be no service right now
@@ -205,8 +246,9 @@ class TramWidgetConfigActivity : AppCompatActivity() {
                     binding.errorText.text = getString(R.string.no_lines_found)
                     
                     binding.skipFilterButton.visibility = View.VISIBLE
+                    binding.skipFilterButton.text = getString(R.string.show_all_lines)
                     binding.skipFilterButton.setOnClickListener {
-                        finishConfiguration(WidgetFilter.NONE)
+                        addStopAndContinue(WidgetFilter.NONE)
                     }
                 }
             } catch (e: Exception) {
@@ -215,8 +257,9 @@ class TramWidgetConfigActivity : AppCompatActivity() {
                 binding.errorText.text = getString(R.string.error_loading_lines)
                 
                 binding.skipFilterButton.visibility = View.VISIBLE
+                binding.skipFilterButton.text = getString(R.string.show_all_lines)
                 binding.skipFilterButton.setOnClickListener {
-                    finishConfiguration(WidgetFilter.NONE)
+                    addStopAndContinue(WidgetFilter.NONE)
                 }
             }
         }
@@ -224,14 +267,8 @@ class TramWidgetConfigActivity : AppCompatActivity() {
 
     private fun onStationSelected(station: Station) {
         selectedStation = station
-        
-        lifecycleScope.launch {
-            // Save the selected station for this widget
-            repository.saveWidgetStation(appWidgetId, station.id)
-            
-            // Move to line/direction selection
-            showLineDirectionSelection()
-        }
+        // Move to line/direction selection (don't save yet)
+        showLineDirectionSelection()
     }
     
     private fun onLineDirectionSelected(lineDirection: LineDirection) {
@@ -239,22 +276,55 @@ class TramWidgetConfigActivity : AppCompatActivity() {
             line = lineDirection.line,
             direction = lineDirection.direction
         )
-        finishConfiguration(filter)
+        addStopAndContinue(filter)
     }
     
-    private fun finishConfiguration(filter: WidgetFilter) {
+    /**
+     * Add the current station+filter as a stop and go back to station selection
+     * to potentially add more stops.
+     */
+    private fun addStopAndContinue(filter: WidgetFilter) {
         val station = selectedStation ?: return
         
+        // Add to configured stops
+        val stop = StopConfig(
+            stationId = station.id,
+            stationName = station.name,
+            filter = filter
+        )
+        configuredStops.add(stop)
+        
+        val message = if (filter.isActive()) {
+            getString(R.string.filter_selected, filter.line, filter.direction)
+        } else {
+            getString(R.string.station_selected, station.name)
+        }
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        
+        // Clear selection and go back to add more
+        selectedStation = null
+        showStationSelection()
+    }
+    
+    /**
+     * Finish configuration and save all stops.
+     */
+    private fun finishConfiguration() {
+        if (configuredStops.isEmpty()) {
+            Toast.makeText(this, "Please add at least one stop", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
         lifecycleScope.launch {
-            // Save the filter
-            repository.saveWidgetFilter(appWidgetId, filter)
+            // Save the widget config with all stops
+            val config = WidgetConfig(stops = configuredStops.toList(), currentIndex = 0)
+            repository.saveWidgetConfig(appWidgetId, config)
             
-            val message = if (filter.isActive()) {
-                getString(R.string.filter_selected, filter.line, filter.direction)
+            val message = if (configuredStops.size == 1) {
+                configuredStops.first().displayName()
             } else {
-                getString(R.string.station_selected, station.name)
+                getString(R.string.stops_configured, configuredStops.size)
             }
-            
             Toast.makeText(this@TramWidgetConfigActivity, message, Toast.LENGTH_SHORT).show()
             
             // Update the widget
@@ -271,10 +341,18 @@ class TramWidgetConfigActivity : AppCompatActivity() {
     
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (currentStep == Step.SELECT_LINE_DIRECTION) {
-            showStationSelection()
-        } else {
-            super.onBackPressed()
+        when (currentStep) {
+            Step.SELECT_LINE_DIRECTION -> {
+                showStationSelection()
+            }
+            Step.SELECT_STATION -> {
+                if (configuredStops.isNotEmpty()) {
+                    // Finish with current stops
+                    finishConfiguration()
+                } else {
+                    super.onBackPressed()
+                }
+            }
         }
     }
 }

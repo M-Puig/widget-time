@@ -87,3 +87,35 @@ data class LineDirection(
 ) {
     override fun toString(): String = "$line → $direction"
 }
+
+/**
+ * Represents a single stop configuration (station + optional filter).
+ */
+data class StopConfig(
+    val stationId: String,
+    val stationName: String,
+    val filter: WidgetFilter = WidgetFilter.NONE
+) {
+    fun displayName(): String {
+        return if (filter.isActive()) {
+            "$stationName (${filter.line})"
+        } else {
+            stationName
+        }
+    }
+}
+
+/**
+ * Widget configuration containing multiple stops that can be swiped through.
+ */
+data class WidgetConfig(
+    val stops: List<StopConfig> = emptyList(),
+    val currentIndex: Int = 0
+) {
+    fun currentStop(): StopConfig? = stops.getOrNull(currentIndex)
+    
+    fun nextIndex(): Int = if (stops.isEmpty()) 0 else (currentIndex + 1) % stops.size
+    fun prevIndex(): Int = if (stops.isEmpty()) 0 else (currentIndex - 1 + stops.size) % stops.size
+    
+    fun hasMultipleStops(): Boolean = stops.size > 1
+}

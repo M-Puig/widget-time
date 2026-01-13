@@ -22,6 +22,11 @@
     <string name="loading">Loading…</string>
     <string name="no_data">No data available</string>
     <string name="tap_to_configure">Tap to configure</string>
+    <string name="previous_stop">Previous stop</string>
+    <string name="next_stop">Next stop</string>
+    <string name="add_another_stop">Add another stop</string>
+    <string name="stops_configured">%1$d stops configured</string>
+    <string name="done">Done</string>
     
     <!-- Main Activity -->
     <string name="add_widget_hint">Add the Tram Time widget to your home screen to see real-time arrivals</string>

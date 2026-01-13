@@ -6,4 +6,12 @@
         <item name="colorAccent">@color/accent</item>
         <item name="android:statusBarColor">@color/primary_dark</item>
     </style>
+    
+    <!-- Splash screen theme for main app -->
+    <style name="Theme.TramTimeWidget.Splash" parent="Theme.SplashScreen.IconBackground">
+        <item name="windowSplashScreenBackground">@color/primary</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/primary</item>
+        <item name="postSplashScreenTheme">@style/Theme.TramTimeWidget</item>
+    </style>
 </resources>
