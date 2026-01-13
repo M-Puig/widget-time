@@ -39,10 +39,10 @@
         <!-- Wheels (thin and tall, front view) -->
         <path
             android:fillColor="#424242"
-            android:pathData="M20,55 L23,55 L23,65 L20,65 Z" />
+            android:pathData="M20,56 L23,56 L23,64 L20,64 Z" />
         <path
             android:fillColor="#424242"
-            android:pathData="M37,55 L40,55 L40,65 L37,65 Z" />
+            android:pathData="M37,56 L40,56 L40,64 L37,64 Z" />
         
         <!-- Track/rail -->
         <path
