@@ -1,0 +1,40 @@
+# Built files
+/build
+/app/build
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Local configuration
+local.properties
+*.properties.local
+
+# IDE files
+.idea/
+*.iml
+.gradle/
+.navigation/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Signing files
+*.jks
+*.keystore
+
+# Log files
+*.log
+
+# Kotlin
+*.kotlin_module
+
+# Coverage reports
+/coverage/
+*.exec

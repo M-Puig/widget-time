@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tram Time Widget</string>
+    <string name="widget_description">Displays real-time tram arrival times for your favorite stations</string>
+    
+    <!-- Configuration Activity -->
+    <string name="select_station">Select a station</string>
+    <string name="search_station">Search station…</string>
+    <string name="select_line_direction">Select a line and direction</string>
+    <string name="filter_optional">Optional: filter for a specific line</string>
+    <string name="station_selected">Selected: %1$s</string>
+    <string name="no_stations_found">No stations found</string>
+    <string name="no_lines_found">No lines available at this station right now</string>
+    <string name="error_loading_stations">Error loading stations. Please check your connection.</string>
+    <string name="error_loading_lines">Error loading lines. Please try again.</string>
+    <string name="retry">Retry</string>
+    <string name="show_all_lines">Show all lines</string>
+    <string name="filter_selected">Filter: %1$s → %2$s</string>
+    
+    <!-- Widget -->
+    <string name="refresh">Refresh</string>
+    <string name="loading">Loading…</string>
+    <string name="no_data">No data available</string>
+    <string name="tap_to_configure">Tap to configure</string>
+    
+    <!-- Main Activity -->
+    <string name="add_widget_hint">Add the Tram Time widget to your home screen to see real-time arrivals</string>
+    <string name="refresh_widgets">Refresh All Widgets</string>
+</resources>
