@@ -2,6 +2,7 @@
 /build
 /app/build
 *.apk
+!TramTimeWidget.apk
 *.aab
 *.ap_
 *.dex
